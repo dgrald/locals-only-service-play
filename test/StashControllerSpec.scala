@@ -7,7 +7,7 @@ import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import play.api.libs.json._
 import play.api.test.Helpers._
 import play.api.test._
-import services.{PointLocation, StashStore}
+import services.{Constants, PointLocation, StashStore}
 
 import scala.concurrent.Future
 
@@ -44,7 +44,7 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
     }
   }
 
-  "StashController.newStash" should {
+  "StashController.addStash" should {
     val newStash = PointLocation(1.1, 1.1)
     "add a new stash to the StashStore" in {
       val (controller, stashStore) = setUpController()
@@ -66,6 +66,16 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
 
       status(actual) mustBe BAD_REQUEST
       contentAsString(actual) mustEqual requestJson.replaceAll("\\s", "")
+    }
+
+    "return bad request when given no json" in {
+      val (controller, _) = setUpController()
+      val request = FakeRequest(POST, "/stash").withTextBody("")
+
+      val actual = controller.addStash(request)
+
+      status(actual) mustBe BAD_REQUEST
+      contentAsString(actual) mustEqual Constants.noValidJsonMessage
     }
   }
 }
