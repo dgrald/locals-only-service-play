@@ -35,7 +35,7 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
 
   "StashStore.addStash" should {
     "add an input PointLocation stash correctly" in {
-        val inputPointStash = SomeRandom.pointLocation()
+        val inputPointStash = SomeRandom.pointLocationStash()
 
         val savedStash = stashStore.addStash(inputPointStash)
 
@@ -45,8 +45,8 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
 
   "StashStore.getStashes" should {
     "return stashes that were added" in {
-      val inputPointStash1 = SomeRandom.pointLocation()
-      val inputPointStash2 = SomeRandom.pointLocation()
+      val inputPointStash1 = SomeRandom.pointLocationStash()
+      val inputPointStash2 = SomeRandom.pointLocationStash()
       val savedStash1 = stashStore.addStash(inputPointStash1)
       whenReady(savedStash1) { saved1 =>
         val savedStash2 = stashStore.addStash(inputPointStash2)

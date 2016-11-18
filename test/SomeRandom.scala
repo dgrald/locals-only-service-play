@@ -1,4 +1,4 @@
-import services.PointLocation
+import services.{Location, Stash, PointLocation}
 
 import scala.util.Random
 
@@ -13,7 +13,19 @@ object SomeRandom {
     random.nextDouble()
   }
 
+  def string(): String = {
+    random.alphanumeric.take(10).mkString("")
+  }
+
   def pointLocation(): PointLocation = {
     PointLocation(double(), double())
+  }
+
+  def pointLocationStash(): Stash = {
+    pointLocationStash(pointLocation())
+  }
+
+  def pointLocationStash(location: Location): Stash = {
+    Stash(string(), location)
   }
 }

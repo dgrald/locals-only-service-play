@@ -7,7 +7,7 @@ import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import play.api.libs.json._
 import play.api.test.Helpers._
 import play.api.test._
-import services.{Constants, PointLocation, StashStore}
+import services.{Stash, Constants, PointLocation, StashStore}
 
 import scala.concurrent.Future
 
@@ -18,9 +18,11 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
 
   implicit lazy val materializer: Materializer = app.materializer
 
-  def getPointLocation(jsValue: JsValue): PointLocation = {
+  def getPointStash(jsValue: JsValue): Stash = {
     val coordinates = (jsValue \ "location" \ "geometry" \ "coordinates").get.validate[List[Double]].get
-    PointLocation(coordinates.head, coordinates.last)
+    val pointLocation = PointLocation(coordinates.head, coordinates.last)
+    val name = (jsValue \ "name").get.validate[String].get
+    Stash(name, pointLocation)
   }
 
   def setUpController(): (StashController, StashStore) = {
@@ -30,7 +32,7 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
   }
 
   "StashController.index" should {
-    val allStashes = List(PointLocation(1.1, 1.1), PointLocation(2.2, 2.2))
+    val allStashes = List(SomeRandom.pointLocationStash(), SomeRandom.pointLocationStash())
     "return the stashes from the StashStore" in {
       val (controller, stashStore) = setUpController()
       when(stashStore.getStashes) thenReturn Future.successful(allStashes)
@@ -38,28 +40,30 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
       val actual = controller.index(FakeRequest())
 
       val jsonValidation = contentAsJson(actual)
-      val first = getPointLocation(jsonValidation(0).get)
-      val second = getPointLocation(jsonValidation(1).get)
+      val first = getPointStash(jsonValidation(0).get)
+      val second = getPointStash(jsonValidation(1).get)
       List(first, second) mustEqual allStashes
     }
   }
 
   "StashController.addStash" should {
-    val newStash = PointLocation(1.1, 1.1)
+    val newStashPointLocation = SomeRandom.pointLocation()
+    val newStash = SomeRandom.pointLocationStash(newStashPointLocation)
     "add a new stash to the StashStore" in {
       val (controller, stashStore) = setUpController()
       when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-      val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(s"""{"location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStash.lat}, ${newStash.long}]}}}"""))
+      val request = FakeRequest(POST, "/stash").withJsonBody(
+        Json.parse(s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin))
 
       val actual = controller.addStash(request)
 
-      val responseStash = getPointLocation(contentAsJson(actual))
+      val responseStash = getPointStash(contentAsJson(actual))
       responseStash mustEqual newStash
     }
 
-    "return bad request when given improper json" in {
+    "return bad request when given improper point location json" in {
       val (controller, _) = setUpController()
-      val requestJson = s"""{"location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStash.long}]}}}"""
+      val requestJson = s"""{"name": "${SomeRandom.string()}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": []}}}"""
       val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
 
       val actual = controller.addStash(request)

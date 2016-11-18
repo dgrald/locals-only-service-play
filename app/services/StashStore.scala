@@ -14,23 +14,23 @@ import scala.concurrent.Future
   */
 class StashStore @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
-  implicit val locationFormat: OFormat[Location] = new OFormat[Location] {
-    override def writes(o: Location): JsObject = Json.obj("loc" -> Location.locationWrites.writes(o))
+  implicit val locationFormat: OFormat[Stash] = new OFormat[Stash] {
+    override def writes(o: Stash): JsObject = Json.obj("stash" -> Stash.stashWrites.writes(o))
 
-    override def reads(json: JsValue): JsResult[Location] = Location.locationReads.reads((json \ "loc").get)
+    override def reads(json: JsValue): JsResult[Stash] = Stash.stashReads.reads((json \ "stash").get)
   }
 
   implicit val jsonFormat: OWrites[JsObject] = new OWrites[JsObject] {
     override def writes(o: JsObject): JsObject = o
   }
 
-  val locationCollection = reactiveMongoApi.database.map(d => d.collection[JSONCollection]("locations"))
+  val locationCollection = reactiveMongoApi.database.map(d => d.collection[JSONCollection]("stashes"))
 
-  def addStash(location: Location): Future[Location] = {
-    locationCollection.flatMap(l => l.insert[Location](location).map(_ => location))
+  def addStash(stash: Stash): Future[Stash] = {
+    locationCollection.flatMap(l => l.insert[Stash](stash).map(_ => stash))
   }
 
-  def getStashes(): Future[Seq[Location]] = {
-    locationCollection.flatMap(l => l.find(Json.obj()).cursor[Location]().collect[List]())
+  def getStashes(): Future[Seq[Stash]] = {
+    locationCollection.flatMap(l => l.find(Json.obj()).cursor[Stash]().collect[List]())
   }
 }
