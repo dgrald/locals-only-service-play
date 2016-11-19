@@ -49,19 +49,32 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
 
       savedStash.futureValue(patienceConfiguration) mustEqual inputLineStash
     }
+
+    "add an input PolygonLocation stash correctly" in {
+      val inputPolygonStash = SomeRandom.polygonLocationStash()
+
+      val savedStash = stashStore.addStash(inputPolygonStash)
+
+      savedStash.futureValue(patienceConfiguration) mustEqual inputPolygonStash
+    }
   }
 
   "StashStore.getStashes" should {
     "return stashes that were added" in {
       val inputPointStash = SomeRandom.pointLocationStash()
       val inputLineStash = SomeRandom.lineLocationStash()
+      val inputPolygonStash = SomeRandom.polygonLocationStash()
       val savedStash1 = stashStore.addStash(inputPointStash)
       whenReady(savedStash1) { saved1 =>
         val savedStash2 = stashStore.addStash(inputLineStash)
         whenReady(savedStash2) { saved2 =>
-          val allStashes = stashStore.getStashes()
-          allStashes.futureValue(patienceConfiguration).contains(inputPointStash) mustBe true
-          allStashes.futureValue(patienceConfiguration).contains(inputLineStash) mustBe true
+          val savedStash3 = stashStore.addStash(inputPolygonStash)
+          whenReady(savedStash3) { saved3 =>
+            val allStashes = stashStore.getStashes()
+            allStashes.futureValue(patienceConfiguration).contains(inputPointStash) mustBe true
+            allStashes.futureValue(patienceConfiguration).contains(inputLineStash) mustBe true
+            allStashes.futureValue(patienceConfiguration).contains(inputPolygonStash) mustBe true
+          }
         }
       }
     }

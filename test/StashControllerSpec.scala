@@ -18,18 +18,27 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
 
   implicit lazy val materializer: Materializer = app.materializer
 
+  def getStash(location: Location, jsValue: JsValue): Stash = {
+    val name = (jsValue \ "name").get.validate[String].get
+    Stash(name, location)
+  }
+
   def getPointStash(jsValue: JsValue): Stash = {
     val coordinates = (jsValue \ "location" \ "geometry" \ "coordinates").get.validate[List[Double]].get
     val pointLocation = PointLocation(coordinates.head, coordinates.last)
-    val name = (jsValue \ "name").get.validate[String].get
-    Stash(name, pointLocation)
+    getStash(pointLocation, jsValue)
   }
 
   def getLineStash(jsValue: JsValue): Stash = {
     val coordinates = (jsValue \ "location" \ "geometry" \ "coordinates").get.validate[List[List[Double]]].get
     val lineLocation = LineLocation(coordinates.map(e => (e.head, e.last)))
-    val name = (jsValue \ "name").get.validate[String].get
-    Stash(name, lineLocation)
+    getStash(lineLocation, jsValue)
+  }
+
+  def getPolygonStash(jsValue: JsValue): Stash = {
+    val coordinates = (jsValue \ "location" \ "geometry" \ "coordinates").get.validate[List[List[Double]]].get
+    val polygonLocation = PolygonLocation(coordinates.map(e => (e.head, e.last)))
+    getStash(polygonLocation, jsValue)
   }
 
   def setUpController(): (StashController, StashStore) = {
@@ -99,7 +108,11 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
         val newStash = SomeRandom.stash(lineLocation)
         val (controller, stashStore) = setUpController()
         when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-        val requestJson = s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [${convertPointCoordinatesToJsonString(lineLocation)}]}}}"""
+        val requestJson =
+          s"""{"name": "${newStash.name}",
+             | "location": {"type": "Feature",
+             | "geometry": {"type": "LineString",
+             |  "coordinates": [${convertPointCoordinatesToJsonString(lineLocation)}]}}}""".stripMargin
         val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
 
         val actual = controller.addStash(request)
@@ -110,10 +123,36 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
         responseStash mustEqual newStash
       }
     }
+
+    "Polygon location" should {
+      "add the new polygon location to the StashStore" in {
+        val polygonLocation = SomeRandom.polygonLocation()
+        val newStash = SomeRandom.stash(polygonLocation)
+        val (controller, stashStore) = setUpController()
+        when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
+        val requestJson =
+          s"""{"name": "${newStash.name}",
+             | "location": {"type": "Feature",
+             |  "geometry": {"type": "Polygon",
+             |   "coordinates": [${convertPointCoordinatesToJsonString(polygonLocation)}]}}}""".stripMargin
+        val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
+
+        val actual = controller.addStash(request)
+
+        status(actual) mustBe OK
+        val jsonValidation = contentAsJson(actual)
+        val responseStash = getPolygonStash(jsonValidation)
+        responseStash mustEqual newStash
+      }
+    }
+  }
+
+  def mapCoordinates(coordinates: List[(Double, Double)]): String = {
+    coordinates.map(p => s"[${p._1}, ${p._2}]").mkString(",")
   }
 
   def convertPointCoordinatesToJsonString(location: Location): String = location match {
-    case line: LineLocation =>
-      line.points.map(p => s"[${p._1}, ${p._2}]").mkString(",")
+    case line: LineLocation => mapCoordinates(line.points)
+    case polygonLocation: PolygonLocation => mapCoordinates(polygonLocation.points)
   }
 }

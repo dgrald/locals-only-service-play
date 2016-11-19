@@ -1,4 +1,4 @@
-import services.{LineLocation, Location, Stash, PointLocation}
+import services._
 
 import scala.util.Random
 
@@ -30,12 +30,20 @@ object SomeRandom {
   }
 
   def lineLocation(): LineLocation = {
-    def doublePair(): (Double, Double) = (double(), double())
-
     LineLocation(List(doublePair(), doublePair(), doublePair()))
   }
 
   def lineLocationStash(): Stash = {
     stash(lineLocation())
   }
+
+  def polygonLocation(): PolygonLocation = {
+    PolygonLocation(List(doublePair(), doublePair(), doublePair()))
+  }
+
+  def polygonLocationStash(): Stash = {
+    stash(polygonLocation())
+  }
+
+  def doublePair(): (Double, Double) = (double(), double())
 }
