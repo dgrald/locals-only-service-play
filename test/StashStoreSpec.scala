@@ -15,7 +15,8 @@ import scala.concurrent.Future
   */
 class StashStoreSpec extends PlaySpec with ScalaFutures {
 
-  val reactiveMongoApi = new ReactiveMongoApi {override def driver: MongoDriver = new MongoDriver()
+  val reactiveMongoApi = new ReactiveMongoApi {
+    override def driver: MongoDriver = new MongoDriver()
 
     override def gridFS: GridFS[JSONSerializationPack.type] = ???
 
@@ -64,6 +65,9 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
       val inputPointStash = SomeRandom.pointLocationStash()
       val inputLineStash = SomeRandom.lineLocationStash()
       val inputPolygonStash = SomeRandom.polygonLocationStash()
+
+      val allNewStashes = List(inputPointStash, inputLineStash, inputPolygonStash)
+
       val savedStash1 = stashStore.addStash(inputPointStash)
       whenReady(savedStash1) { saved1 =>
         val savedStash2 = stashStore.addStash(inputLineStash)
@@ -71,9 +75,7 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
           val savedStash3 = stashStore.addStash(inputPolygonStash)
           whenReady(savedStash3) { saved3 =>
             val allStashes = stashStore.getStashes()
-            allStashes.futureValue(patienceConfiguration).contains(inputPointStash) mustBe true
-            allStashes.futureValue(patienceConfiguration).contains(inputLineStash) mustBe true
-            allStashes.futureValue(patienceConfiguration).contains(inputPolygonStash) mustBe true
+            allStashes.futureValue(patienceConfiguration).intersect(allNewStashes) mustEqual allNewStashes
           }
         }
       }

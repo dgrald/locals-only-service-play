@@ -2,10 +2,10 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.api.mvc.{Action, Controller}
-import services.{Stash, Constants, Location, StashStore}
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import services.{Constants, Stash, StashStore}
 
 import scala.concurrent.Future
 
