@@ -35,25 +35,33 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
 
   "StashStore.addStash" should {
     "add an input PointLocation stash correctly" in {
-        val inputPointStash = SomeRandom.pointLocationStash()
+      val inputPointStash = SomeRandom.pointLocationStash()
 
-        val savedStash = stashStore.addStash(inputPointStash)
+      val savedStash = stashStore.addStash(inputPointStash)
 
-        savedStash.futureValue(patienceConfiguration) mustEqual inputPointStash
+      savedStash.futureValue(patienceConfiguration) mustEqual inputPointStash
+    }
+
+    "add an input LineLocation stash correctly" in {
+      val inputLineStash = SomeRandom.lineLocationStash()
+
+      val savedStash = stashStore.addStash(inputLineStash)
+
+      savedStash.futureValue(patienceConfiguration) mustEqual inputLineStash
     }
   }
 
   "StashStore.getStashes" should {
     "return stashes that were added" in {
-      val inputPointStash1 = SomeRandom.pointLocationStash()
-      val inputPointStash2 = SomeRandom.pointLocationStash()
-      val savedStash1 = stashStore.addStash(inputPointStash1)
+      val inputPointStash = SomeRandom.pointLocationStash()
+      val inputLineStash = SomeRandom.lineLocationStash()
+      val savedStash1 = stashStore.addStash(inputPointStash)
       whenReady(savedStash1) { saved1 =>
-        val savedStash2 = stashStore.addStash(inputPointStash2)
+        val savedStash2 = stashStore.addStash(inputLineStash)
         whenReady(savedStash2) { saved2 =>
           val allStashes = stashStore.getStashes()
-          allStashes.futureValue(patienceConfiguration).contains(inputPointStash1) mustBe true
-          allStashes.futureValue(patienceConfiguration).contains(inputPointStash2) mustBe true
+          allStashes.futureValue(patienceConfiguration).contains(inputPointStash) mustBe true
+          allStashes.futureValue(patienceConfiguration).contains(inputLineStash) mustBe true
         }
       }
     }
