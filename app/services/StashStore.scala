@@ -15,7 +15,7 @@ import scala.concurrent.Future
 class StashStore @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
   implicit val locationFormat: OFormat[Stash] = new OFormat[Stash] {
-    override def writes(o: Stash): JsObject = Json.obj("stash" -> Stash.stashWrites.writes(o))
+    override def writes(o: Stash): JsObject = Json.obj("_id" -> o._id, "stash" -> Stash.stashWrites.writes(o))
 
     override def reads(json: JsValue): JsResult[Stash] = Stash.stashReads.reads((json \ "stash").get)
   }
@@ -32,5 +32,9 @@ class StashStore @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
   def getStashes(): Future[Seq[Stash]] = {
     locationCollection.flatMap(l => l.find(Json.obj()).cursor[Stash]().collect[List]())
+  }
+
+  def deleteStash(id: String): Future[Boolean] = {
+    locationCollection.flatMap(l => l.findAndRemove(Json.obj("_id" -> id)).map(result => true))
   }
 }

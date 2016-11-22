@@ -1,5 +1,7 @@
 package services
 
+import java.util.UUID
+
 import play.api.libs.json._
 
 /**
@@ -13,7 +15,7 @@ case class LineLocation(points: List[(Double, Double)]) extends Location
 
 case class PolygonLocation(points: List[(Double, Double)]) extends Location
 
-case class Stash(name: String, location: Location)
+case class Stash(_id: String, name: String, location: Location)
 
 object Location {
 
@@ -71,6 +73,15 @@ object Location {
 }
 
 object Stash {
+
+  implicit val stashRequestBodyReads = new Reads[Stash] {
+    override def reads(json: JsValue): JsResult[Stash] = {
+      val location = (json \ "location").validate[Location].get
+      val name = (json \ "name").validate[String].get
+      val id = UUID.randomUUID().toString
+      JsSuccess(new Stash(id, name, location))
+    }
+  }
 
   implicit val stashReads: Reads[Stash] = Json.reads[Stash]
 

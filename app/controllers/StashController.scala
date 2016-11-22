@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.api.mvc.{Action, Controller}
-import services.{Constants, Stash, StashStore}
+import services.{JsonConverter, Constants, Stash, StashStore}
 
 import scala.concurrent.Future
 
@@ -13,16 +13,16 @@ import scala.concurrent.Future
   * Created by dylangrald on 11/2/16.
   */
 @Singleton
-class StashController @Inject()(stashStore: StashStore) extends Controller {
+class StashController @Inject()(stashStore: StashStore, jsonConverter: JsonConverter) extends Controller {
 
   def addStash = Action.async(request => {
     request.body.asJson match {
       case None => Future.successful(BadRequest(Constants.noValidJsonMessage))
       case Some(json) =>
-        val stash = json.validate[Stash]
+        val stash = jsonConverter.getStashFromRequestBody(json)
         stash match {
-          case JsSuccess(value, _) => stashStore.addStash(value).map(addedStash => Ok(Json.toJson[Stash](addedStash)))
-          case JsError(error) => Future.successful(BadRequest(json))
+          case Some(value) => stashStore.addStash(value).map(addedStash => Ok(Json.toJson[Stash](addedStash)))
+          case None => Future.successful(BadRequest(json))
         }
     }
   })

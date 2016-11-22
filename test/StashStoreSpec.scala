@@ -81,4 +81,19 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
       }
     }
   }
+
+  "StashStore.deleteStash" should {
+    "delete the stash with the specified id" in {
+      val stash = SomeRandom.stash(SomeRandom.lineLocation())
+      val addStashFuture = stashStore.addStash(stash)
+
+      whenReady(addStashFuture) { addedStash =>
+        val deleteStashFuture = stashStore.deleteStash(addedStash._id)
+        whenReady(deleteStashFuture) { deletedStashResult =>
+          val getAllStashesFuture = stashStore.getStashes()
+          getAllStashesFuture.futureValue(patienceConfiguration).contains(stash) mustEqual false
+        }
+      }
+    }
+  }
 }

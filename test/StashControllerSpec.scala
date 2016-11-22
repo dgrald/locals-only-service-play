@@ -20,7 +20,8 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
 
   def getStash(location: Location, jsValue: JsValue): Stash = {
     val name = (jsValue \ "name").get.validate[String].get
-    Stash(name, location)
+    val id = (jsValue \ "_id").get.validate[String].get
+    Stash(id, name, location)
   }
 
   def getPointStash(jsValue: JsValue): Stash = {
@@ -41,16 +42,17 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
     getStash(polygonLocation, jsValue)
   }
 
-  def setUpController(): (StashController, StashStore) = {
+  def setUpController(): (StashController, StashStore, JsonConverter) = {
     val stashStore = mock[StashStore]
-    val controller = new StashController(stashStore)
-    (controller, stashStore)
+    val jsonConverter = mock[JsonConverter]
+    val controller = new StashController(stashStore, jsonConverter)
+    (controller, stashStore, jsonConverter)
   }
 
   "StashController.index" should {
     val allStashes = List(SomeRandom.pointLocationStash(), SomeRandom.pointLocationStash())
     "return the stashes from the StashStore" in {
-      val (controller, stashStore) = setUpController()
+      val (controller, stashStore, _) = setUpController()
       when(stashStore.getStashes) thenReturn Future.successful(allStashes)
 
       val actual = controller.index(FakeRequest())
@@ -64,95 +66,43 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
   }
 
   "StashController.addStash" should {
-    "PointLocation" should {
-      val newStashPointLocation = SomeRandom.pointLocation()
-      val newStash = SomeRandom.stash(newStashPointLocation)
-      "add a new stash to the StashStore" in {
-        val (controller, stashStore) = setUpController()
-        when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-        val request = FakeRequest(POST, "/stash").withJsonBody(
-          Json.parse(s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin))
+    val newStashPointLocation = SomeRandom.pointLocation()
+    val newStash = SomeRandom.stash(newStashPointLocation)
+    "add a new stash to the StashStore" in {
+      val (controller, stashStore, jsonConverter) = setUpController()
+      when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
+      val jsonBody = Json.parse(s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin)
+      val request = FakeRequest(POST, "/stash").withJsonBody(jsonBody)
+      when(jsonConverter.getStashFromRequestBody(jsonBody)) thenReturn Some(newStash)
 
-        val actual = controller.addStash(request)
+      val actual = controller.addStash(request)
 
-        status(actual) mustBe OK
-        val responseStash = getPointStash(contentAsJson(actual))
-        responseStash mustEqual newStash
-      }
-
-      "return bad request when given improper point location json" in {
-        val (controller, _) = setUpController()
-        val requestJson = s"""{"name": "${SomeRandom.string()}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": []}}}"""
-        val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
-
-        val actual = controller.addStash(request)
-
-        status(actual) mustBe BAD_REQUEST
-        contentAsString(actual) mustEqual requestJson.replaceAll("\\s", "")
-      }
-
-      "return bad request when given no json" in {
-        val (controller, _) = setUpController()
-        val request = FakeRequest(POST, "/stash").withTextBody("")
-
-        val actual = controller.addStash(request)
-
-        status(actual) mustBe BAD_REQUEST
-        contentAsString(actual) mustEqual Constants.noValidJsonMessage
-      }
+      status(actual) mustBe OK
+      val responseStash = getPointStash(contentAsJson(actual))
+      responseStash mustEqual newStash
     }
 
-    "Line location" should {
-      "add the new line location to the StashStore" in {
-        val lineLocation = SomeRandom.lineLocation()
-        val newStash = SomeRandom.stash(lineLocation)
-        val (controller, stashStore) = setUpController()
-        when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-        val requestJson =
-          s"""{"name": "${newStash.name}",
-             | "location": {"type": "Feature",
-             | "geometry": {"type": "LineString",
-             |  "coordinates": [${convertPointCoordinatesToJsonString(lineLocation)}]}}}""".stripMargin
-        val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
+    "return bad request when given improper point location json" in {
+      val (controller, _, jsonConverter) = setUpController()
+      val requestJsonString = s"""{"name": "${SomeRandom.string()}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": []}}}"""
+      val requestJson = Json.parse(requestJsonString)
+      when(jsonConverter.getStashFromRequestBody(requestJson)) thenReturn None
+      val request = FakeRequest(POST, "/stash").withJsonBody(requestJson)
 
-        val actual = controller.addStash(request)
+      val actual = controller.addStash(request)
 
-        status(actual) mustBe OK
-        val jsonValidation = contentAsJson(actual)
-        val responseStash = getLineStash(jsonValidation)
-        responseStash mustEqual newStash
-      }
+      status(actual) mustBe BAD_REQUEST
+      contentAsString(actual) mustEqual requestJsonString.replaceAll("\\s", "")
     }
 
-    "Polygon location" should {
-      "add the new polygon location to the StashStore" in {
-        val polygonLocation = SomeRandom.polygonLocation()
-        val newStash = SomeRandom.stash(polygonLocation)
-        val (controller, stashStore) = setUpController()
-        when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-        val requestJson =
-          s"""{"name": "${newStash.name}",
-             | "location": {"type": "Feature",
-             |  "geometry": {"type": "Polygon",
-             |   "coordinates": [${convertPointCoordinatesToJsonString(polygonLocation)}]}}}""".stripMargin
-        val request = FakeRequest(POST, "/stash").withJsonBody(Json.parse(requestJson))
+    "return bad request when given no json" in {
+      val (controller, _, _) = setUpController()
+      val request = FakeRequest(POST, "/stash").withTextBody("")
 
-        val actual = controller.addStash(request)
+      val actual = controller.addStash(request)
 
-        status(actual) mustBe OK
-        val jsonValidation = contentAsJson(actual)
-        val responseStash = getPolygonStash(jsonValidation)
-        responseStash mustEqual newStash
-      }
+      status(actual) mustBe BAD_REQUEST
+      contentAsString(actual) mustEqual Constants.noValidJsonMessage
     }
-  }
-
-  def mapCoordinates(coordinates: List[(Double, Double)]): String = {
-    coordinates.map(p => s"[${p._1}, ${p._2}]").mkString(",")
-  }
-
-  def convertPointCoordinatesToJsonString(location: Location): String = location match {
-    case line: LineLocation => mapCoordinates(line.points)
-    case polygonLocation: PolygonLocation => mapCoordinates(polygonLocation.points)
   }
 }

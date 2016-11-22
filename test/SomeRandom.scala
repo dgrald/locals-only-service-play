@@ -1,3 +1,5 @@
+import java.util.UUID
+
 import services._
 
 import scala.util.Random
@@ -26,7 +28,7 @@ object SomeRandom {
   }
 
   def stash(location: Location): Stash = {
-    Stash(string(), location)
+    Stash(uuidString(), string(), location)
   }
 
   def lineLocation(): LineLocation = {
@@ -43,6 +45,10 @@ object SomeRandom {
 
   def polygonLocationStash(): Stash = {
     stash(polygonLocation())
+  }
+
+  def uuidString(): String = {
+    UUID.randomUUID().toString
   }
 
   def doublePair(): (Double, Double) = (double(), double())
