@@ -21,8 +21,15 @@ object Location {
 
   implicit val locationReads: Reads[Location] = new Reads[Location] {
 
-    def convertCoordinatesToPairs(coordinates: List[List[Double]]): List[(Double, Double)] = {
-      coordinates.map(c => (c.head, c.last))
+    def convertCoordinatesToPairs(coordinates: List[List[Double]]): Option[List[(Double, Double)]] = {
+      val allCoordinatesValid = coordinates.forall(c => c.length == 2)
+      if(allCoordinatesValid) {
+        Some(coordinates.map(c => c match {
+          case Seq(first, second) => (first, second)
+        }))
+      } else {
+        None
+      }
     }
 
     def getPointsJsValue(json: JsValue): List[List[Double]] = {
@@ -30,20 +37,28 @@ object Location {
     }
 
     override def reads(json: JsValue): JsResult[Location] = {
+
+      def matchLocationFromCoordinates(locationCreator: (List[(Double, Double)]) => Location): JsResult[Location] = {
+        val coordinatePairs = convertCoordinatesToPairs(getPointsJsValue(json))
+        coordinatePairs match {
+          case Some(parsedCoordinates) => JsSuccess(locationCreator(parsedCoordinates))
+          case None => JsError("")
+        }
+      }
+
       (json \ "geometry" \ "type").validate[String] match {
         case JsSuccess(value, _) => value match {
           case "Point" =>
-            val coordinates = (json \ "geometry" \ "coordinates").validate[List[Double]].get
+            val coordinates = (json \ "geometry" \ "coordinates").validate[List[Double]]
             coordinates match {
-              case List(lat, long) => JsSuccess(PointLocation(lat, long))
-              case _ => JsError("Improper coordinates for point location")
+              case JsSuccess(coordinateValue, _) => coordinateValue match {
+                case List(lat, long) => JsSuccess(PointLocation(lat, long))
+                case _ => JsError("")
+              }
+              case _ => JsError("")
             }
-          case "LineString" =>
-            val coordinates = getPointsJsValue(json)
-            JsSuccess(LineLocation(convertCoordinatesToPairs(coordinates)))
-          case "Polygon" =>
-            val coordinates = getPointsJsValue(json)
-            JsSuccess(PolygonLocation(convertCoordinatesToPairs(coordinates)))
+          case "LineString" => matchLocationFromCoordinates((parsedCoordinates: List[(Double, Double)]) => LineLocation(parsedCoordinates))
+          case "Polygon" => matchLocationFromCoordinates((parsedCoordinates: List[(Double, Double)]) => PolygonLocation(parsedCoordinates))
         }
       }
     }
@@ -76,10 +91,16 @@ object Stash {
 
   implicit val stashRequestBodyReads = new Reads[Stash] {
     override def reads(json: JsValue): JsResult[Stash] = {
-      val location = (json \ "location").validate[Location].get
-      val name = (json \ "name").validate[String].get
-      val id = UUID.randomUUID().toString
-      JsSuccess(new Stash(id, name, location))
+      (json \ "location").validate[Location] match {
+        case JsSuccess(location, _) =>
+          (json \ "name").validate[String] match {
+            case JsSuccess(nameValue, _) =>
+              val id = UUID.randomUUID().toString
+              JsSuccess(new Stash(id, nameValue, location))
+            case _ => JsError("")
+          }
+        case _ => JsError("")
+      }
     }
   }
 

@@ -10,6 +10,7 @@ class JsonConverter {
   def getStashFromRequestBody(requestBody: JsValue): Option[Stash] = {
     requestBody.validate[Stash](Stash.stashRequestBodyReads) match {
       case JsSuccess(value, _) => Some(value)
+      case JsError(_) => None
     }
   }
 

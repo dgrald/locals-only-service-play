@@ -11,22 +11,49 @@ class JsonConverterSpec extends PlaySpec {
 
   "getStashFromRequestBody" should {
     "parse a PointLocation and" should {
+      val newStashPointLocation = SomeRandom.pointLocation()
+      val newStash = SomeRandom.stash(newStashPointLocation)
       "return a new PointLocation with the correct values" in {
-        val newStashPointLocation = SomeRandom.pointLocation()
-        val newStash = SomeRandom.stash(newStashPointLocation)
-        val input = Json.parse(s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin)
+        val input = Json.parse(
+          s"""{"name": "${newStash.name}",
+             | "location": {"type": "Feature",
+             |  "geometry": {"type": "Point",
+             |  "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin)
 
         val actual = jsonConverter.getStashFromRequestBody(input).get
 
         actual.name mustEqual newStash.name
         actual.location mustEqual newStash.location
       }
+
+      "return None when given improper coordinates" in {
+        val input = Json.parse(
+          s"""{"name": "${newStash.name}",
+              | "location": {"type": "Feature",
+              |  "geometry": {"type": "Point",
+              |  "coordinates": []}}}""".stripMargin)
+
+        val actual = jsonConverter.getStashFromRequestBody(input)
+
+        actual mustEqual None
+      }
+
+      "return None when given no name" in {
+        val input = Json.parse(
+          s"""{ "location": {"type": "Feature",
+              |  "geometry": {"type": "Point",
+              |  "coordinates": [1.2, 2.2]}}}""".stripMargin)
+
+        val actual = jsonConverter.getStashFromRequestBody(input)
+
+        actual mustEqual None
+      }
     }
 
     "parse a LineLocation and" should {
+      val lineLocation = SomeRandom.lineLocation()
+      val newStash = SomeRandom.stash(lineLocation)
       "return a new LineLocation with the correct values" in {
-        val lineLocation = SomeRandom.lineLocation()
-        val newStash = SomeRandom.stash(lineLocation)
         val requestJson = Json.parse(
           s"""{"name": "${newStash.name}",
               | "location": {"type": "Feature",
@@ -38,6 +65,18 @@ class JsonConverterSpec extends PlaySpec {
 
         actual.name mustEqual newStash.name
         actual.location mustEqual newStash.location
+      }
+
+      "return None when given improper coordinates" in {
+        val input = Json.parse(
+          s"""{"name": "${newStash.name}",
+              | "location": {"type": "Feature",
+              |  "geometry": {"type": "Point",
+              |  "coordinates": [[1.2]]}}}""".stripMargin)
+
+        val actual = jsonConverter.getStashFromRequestBody(input)
+
+        actual mustEqual None
       }
     }
 
