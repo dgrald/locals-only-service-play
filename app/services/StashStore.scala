@@ -34,6 +34,13 @@ class StashStore @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
     locationCollection.flatMap(l => l.find(Json.obj()).cursor[Stash]().collect[List]())
   }
 
+  def getStash(id: String): Future[Option[Stash]] = {
+    locationCollection.flatMap(l => l.find(Json.obj("_id" -> id)).cursor[Stash].collect[List]().map {
+      case List(matchingStash) => Some(matchingStash)
+      case _ => None
+    })
+  }
+
   def deleteStash(id: String): Future[Boolean] = {
     locationCollection.flatMap(l => l.findAndRemove(Json.obj("_id" -> id)).map(result => true))
   }

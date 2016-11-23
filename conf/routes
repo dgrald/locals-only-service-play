@@ -3,6 +3,7 @@
 # ~~~~
 
 GET     /stash                      controllers.StashController.index
+GET     /stash/:id                  controllers.StashController.getStash(id: String)
 POST    /stash                      controllers.StashController.addStash
 PUT     /stash                      controllers.StashController.updateStash
 

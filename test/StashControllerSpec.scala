@@ -65,6 +65,30 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
     }
   }
 
+  "StashController.getStash" should {
+    val id = SomeRandom.uuidString()
+
+    "get the specified stash when it exists" in {
+      val stash = SomeRandom.lineLocationStash()
+      val (controller, stashStore, _) = setUpController()
+      when(stashStore.getStash(id)) thenReturn Future.successful(Some(stash))
+
+      val actual = controller.getStash(id)(FakeRequest())
+
+      status(actual) mustBe OK
+      getLineStash(contentAsJson(actual)) mustEqual stash
+    }
+
+    "return 404 when there is no stash that exists" in {
+      val (controller, stashStore, _) = setUpController()
+      when(stashStore.getStash(id)) thenReturn Future.successful(None)
+
+      val actual = controller.getStash(id)(FakeRequest())
+
+      status(actual) mustBe NOT_FOUND
+    }
+  }
+
   "StashController.addStash" should {
     val newStashPointLocation = SomeRandom.pointLocation()
     val newStash = SomeRandom.stash(newStashPointLocation)

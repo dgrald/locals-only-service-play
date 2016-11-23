@@ -24,6 +24,13 @@ class StashController @Inject()(stashStore: StashStore, jsonConverter: JsonConve
     stashStore.getStashes().map(stashes => Ok(Json.toJson(stashes)))
   })
 
+  def getStash(id: String) = Action.async(request =>
+    stashStore.getStash(id).map {
+      case Some(retrievedStash) => Ok(Json.toJson[Stash](retrievedStash))
+      case None => NotFound
+    }
+  )
+
   def updateStash = Action.async(request => {
     validateStashAndRespond(request, (stash) => stashStore.updateStash(stash).map(updatedStash => Ok(Json.toJson[Stash](updatedStash))))
   })

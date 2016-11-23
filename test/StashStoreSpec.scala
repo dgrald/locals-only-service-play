@@ -82,6 +82,26 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
     }
   }
 
+  "StashController.getStash(id)" should {
+    "return stash when it exists" in {
+      val newStash = SomeRandom.lineLocationStash()
+
+      val savedStashFuture = stashStore.addStash(newStash)
+      whenReady(savedStashFuture) { saved =>
+        val retrievedStashFuture = stashStore.getStash(newStash._id)
+        retrievedStashFuture.futureValue(patienceConfiguration).get mustEqual newStash
+      }
+    }
+
+    "return None when it does not exist" in {
+      val id = SomeRandom.uuidString()
+
+      val getStashFuture = stashStore.getStash(id)
+
+      getStashFuture.futureValue(patienceConfiguration) mustEqual None
+    }
+  }
+
   "StashStore.deleteStash" should {
     "delete the stash with the specified id" in {
       val stash = SomeRandom.stash(SomeRandom.lineLocation())
