@@ -1,5 +1,6 @@
 import java.util.UUID
 
+import play.api.libs.json.{Json, JsValue}
 import services._
 
 import scala.util.Random
@@ -52,4 +53,8 @@ object SomeRandom {
   }
 
   def doublePair(): (Double, Double) = (double(), double())
+
+  def jsonObj(): JsValue = {
+    Json.obj(string() -> string())
+  }
 }

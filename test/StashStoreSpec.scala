@@ -6,7 +6,7 @@ import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.api.gridfs.GridFS
 import reactivemongo.api.{DefaultDB, MongoConnection, MongoDriver}
 import reactivemongo.play.json.JSONSerializationPack
-import services.StashStore
+import services.{Stash, StashStore}
 
 import scala.concurrent.Future
 
@@ -92,6 +92,27 @@ class StashStoreSpec extends PlaySpec with ScalaFutures {
         whenReady(deleteStashFuture) { deletedStashResult =>
           val getAllStashesFuture = stashStore.getStashes()
           getAllStashesFuture.futureValue(patienceConfiguration).contains(stash) mustEqual false
+        }
+      }
+    }
+  }
+
+  "StashStore.updateStash" should {
+    "update the stash with the new fields" in {
+      val stashId = SomeRandom.uuidString()
+      val originalStash = Stash(stashId, SomeRandom.string(), SomeRandom.lineLocation())
+      val updatedStashName = SomeRandom.string()
+      val updatedStashLocation = SomeRandom.pointLocation()
+      val updatedStash = Stash(stashId, updatedStashName, updatedStashLocation)
+
+      val savedOriginalStashFuture = stashStore.addStash(originalStash)
+      whenReady(savedOriginalStashFuture) { addedStash =>
+        val updatedStashFuture = stashStore.updateStash(updatedStash)
+        updatedStashFuture.futureValue(patienceConfiguration) mustEqual updatedStash
+
+        val allStashesFuture = stashStore.getStashes()
+        whenReady(allStashesFuture) { allStashes =>
+          allStashes.find(s => s._id.equals(stashId)).get mustEqual updatedStash
         }
       }
     }

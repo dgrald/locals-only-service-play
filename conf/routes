@@ -4,6 +4,7 @@
 
 GET     /stash                      controllers.StashController.index
 POST    /stash                      controllers.StashController.addStash
+PUT     /stash                      controllers.StashController.updateStash
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

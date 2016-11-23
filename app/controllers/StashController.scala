@@ -4,8 +4,9 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
-import play.api.mvc.{Action, Controller}
-import services.{JsonConverter, Constants, Stash, StashStore}
+import play.api.mvc
+import play.api.mvc.{Action, AnyContent, Controller, Result}
+import services.{Constants, JsonConverter, Stash, StashStore}
 
 import scala.concurrent.Future
 
@@ -16,19 +17,27 @@ import scala.concurrent.Future
 class StashController @Inject()(stashStore: StashStore, jsonConverter: JsonConverter) extends Controller {
 
   def addStash = Action.async(request => {
-    request.body.asJson match {
-      case None => Future.successful(BadRequest(Constants.noValidJsonMessage))
-      case Some(json) =>
-        val stash = jsonConverter.getStashFromRequestBody(json)
-        stash match {
-          case Some(value) => stashStore.addStash(value).map(addedStash => Ok(Json.toJson[Stash](addedStash)))
-          case None => Future.successful(BadRequest(json))
-        }
-    }
+    validateStashAndRespond(request, (stash) => stashStore.addStash(stash).map(addedStash => Ok(Json.toJson[Stash](addedStash))))
   })
 
   def index = Action.async(request => {
     stashStore.getStashes().map(stashes => Ok(Json.toJson(stashes)))
   })
+
+  def updateStash = Action.async(request => {
+    validateStashAndRespond(request, (stash) => stashStore.updateStash(stash).map(updatedStash => Ok(Json.toJson[Stash](updatedStash))))
+  })
+
+  private def validateStashAndRespond(request: mvc.Request[AnyContent], responseAction: (Stash) => Future[Result]): Future[Result] = {
+    request.body.asJson match {
+      case None => Future.successful(BadRequest(Constants.noValidJsonMessage))
+      case Some(json) =>
+        val stash = jsonConverter.getStashFromRequestBody(json)
+        stash match {
+          case Some(value) => responseAction(value)
+          case None => Future.successful(BadRequest(json))
+        }
+    }
+  }
 }
 

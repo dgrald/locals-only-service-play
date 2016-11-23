@@ -71,7 +71,7 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
     "add a new stash to the StashStore" in {
       val (controller, stashStore, jsonConverter) = setUpController()
       when(stashStore.addStash(newStash)) thenReturn Future.successful(newStash)
-      val jsonBody = Json.parse(s"""{"name": "${newStash.name}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [${newStashPointLocation.lat}, ${newStashPointLocation.long}]}}}""".stripMargin)
+      val jsonBody = SomeRandom.jsonObj()
       val request = FakeRequest(POST, "/stash").withJsonBody(jsonBody)
       when(jsonConverter.getStashFromRequestBody(jsonBody)) thenReturn Some(newStash)
 
@@ -84,15 +84,14 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
 
     "return bad request when given improper point location json" in {
       val (controller, _, jsonConverter) = setUpController()
-      val requestJsonString = s"""{"name": "${SomeRandom.string()}", "location": {"type": "Feature", "geometry": {"type": "Point", "coordinates": []}}}"""
-      val requestJson = Json.parse(requestJsonString)
+      val requestJson = SomeRandom.jsonObj()
       when(jsonConverter.getStashFromRequestBody(requestJson)) thenReturn None
       val request = FakeRequest(POST, "/stash").withJsonBody(requestJson)
 
       val actual = controller.addStash(request)
 
       status(actual) mustBe BAD_REQUEST
-      contentAsString(actual) mustEqual requestJsonString.replaceAll("\\s", "")
+      contentAsString(actual).replaceAll("\\s", "") mustEqual Json.prettyPrint(requestJson).replaceAll("\\s", "")
     }
 
     "return bad request when given no json" in {
@@ -100,6 +99,46 @@ class StashControllerSpec extends PlaySpec with MockitoSugar with OneAppPerSuite
       val request = FakeRequest(POST, "/stash").withTextBody("")
 
       val actual = controller.addStash(request)
+
+      status(actual) mustBe BAD_REQUEST
+      contentAsString(actual) mustEqual Constants.noValidJsonMessage
+    }
+  }
+
+  "StashController.updateStash" should {
+    "update the given stash" in {
+      val (controller, stashStore, jsonConverter) = setUpController()
+      val jsonBody = SomeRandom.jsonObj()
+      val request = FakeRequest(PUT, "/stash").withJsonBody(jsonBody)
+      val stash = SomeRandom.pointLocationStash()
+      val updatedStash = SomeRandom.pointLocationStash()
+      when(jsonConverter.getStashFromRequestBody(jsonBody)) thenReturn Some(stash)
+      when(stashStore.updateStash(stash)) thenReturn Future.successful(updatedStash)
+
+      val actual = controller.updateStash(request)
+
+      status(actual) mustBe OK
+      val responseStash = getPointStash(contentAsJson(actual))
+      responseStash mustEqual updatedStash
+    }
+
+    "return bad request when given improper point location json" in {
+      val (controller, _, jsonConverter) = setUpController()
+      val requestJson = SomeRandom.jsonObj()
+      when(jsonConverter.getStashFromRequestBody(requestJson)) thenReturn None
+      val request = FakeRequest(PUT, "/stash").withJsonBody(requestJson)
+
+      val actual = controller.updateStash(request)
+
+      status(actual) mustBe BAD_REQUEST
+      contentAsString(actual).replaceAll("\\s", "") mustEqual Json.prettyPrint(requestJson).replaceAll("\\s", "")
+    }
+
+    "return bad request when given no json" in {
+      val (controller, _, _) = setUpController()
+      val request = FakeRequest(PUT, "/stash").withTextBody("")
+
+      val actual = controller.updateStash(request)
 
       status(actual) mustBe BAD_REQUEST
       contentAsString(actual) mustEqual Constants.noValidJsonMessage
