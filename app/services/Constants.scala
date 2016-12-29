@@ -5,4 +5,6 @@ package services
   */
 object Constants {
   def noValidJsonMessage: String = "Request must contain valid JSON"
+
+  def googleApiKey: String = "AIzaSyAxE_36aRHeVBGvfzuYGt7oAaLbPGIQgAI"
 }
